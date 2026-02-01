@@ -5,16 +5,12 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import { google } from 'googleapis';
 import { uploadToFacebook } from './src/socials/facebook.js';
-import mongoose from 'mongoose';
-import { User } from './src/db.js';
+import { db, initDb } from './src/db.js';
 
 dotenv.config();
 
-// --- MONGOOSE CONNECTION ---
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/content-automation';
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('🍃 Connected to MongoDB'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+// --- SUPABASE CONNECTION ---
+initDb();
 
 const app = express();
 app.use(cors());
@@ -23,6 +19,11 @@ app.use(bodyParser.json());
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = './tokens.json';
 
+// --- FACEBOOK OAUTH CONFIG ---
+const FB_APP_ID = process.env.FACEBOOK_APP_ID;
+const FB_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+const FB_REDIRECT_URI = process.env.FACEBOOK_REDIRECT_URI || 'http://localhost:3000/auth/facebook/callback';
+
 // --- YOUTUBE OAUTH SETUP ---
 const oauth2Client = new google.auth.OAuth2(
     process.env.YOUTUBE_CLIENT_ID,
@@ -30,12 +31,20 @@ const oauth2Client = new google.auth.OAuth2(
     process.env.YOUTUBE_REDIRECT_URI || 'http://localhost:3000/auth/youtube/callback'
 );
 
-// 1. YouTube Auth Route
+// --- ROUTES ---
+
+// 1. YouTube Auth
 app.get('/auth/youtube', (req, res) => {
     const url = oauth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: ['https://www.googleapis.com/auth/youtube.upload'],
     });
+    res.redirect(url);
+});
+
+// 2. Facebook Auth
+app.get('/auth/facebook', (req, res) => {
+    const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${FB_APP_ID}&redirect_uri=${FB_REDIRECT_URI}&scope=pages_manage_posts,instagram_content_publish,pages_read_engagement`;
     res.redirect(url);
 });
 
@@ -45,31 +54,37 @@ app.get('/auth/youtube/callback', async (req, res) => {
     try {
         const { tokens } = await oauth2Client.getToken(code);
 
-        // Save to MongoDB (Assume single user 'admin' for now)
-        await User.findOneAndUpdate(
-            { userId: 'admin' },
-            { youtubeTokens: tokens },
-            { upsert: true }
+        // Save to Supabase
+        await db.query(
+            `INSERT INTO users (user_id, youtube_tokens) VALUES ($1, $2)
+             ON CONFLICT (user_id) DO UPDATE SET youtube_tokens = $2`,
+            ['admin', JSON.stringify(tokens)]
         );
 
-        res.send('<h1>✅ YouTube Connected & Saved to DB!</h1><p>You can close this window now.</p>');
+        res.send('<h1>✅ YouTube Connected & Saved to Supabase!</h1><p>You can close this window now.</p>');
     } catch (e) {
         res.status(500).send('Error: ' + e.message);
     }
 });
 
-// 3. Facebook Connection
-app.post('/api/connect/facebook', async (req, res) => {
-    const { token } = req.body;
-    if (token) {
-        await User.findOneAndUpdate(
-            { userId: 'admin' },
-            { facebookToken: token },
-            { upsert: true }
+// 3. Facebook Callback
+app.get('/auth/facebook/callback', async (req, res) => {
+    const { code } = req.query;
+    try {
+        // Exchange code for Access Token
+        const tokenRes = await axios.get(`https://graph.facebook.com/v19.0/oauth/access_token?client_id=${FB_APP_ID}&redirect_uri=${FB_REDIRECT_URI}&client_secret=${FB_APP_SECRET}&code=${code}`);
+        const accessToken = tokenRes.data.access_token;
+
+        // Save to Supabase
+        await db.query(
+            `INSERT INTO users (user_id, facebook_token) VALUES ($1, $2)
+             ON CONFLICT (user_id) DO UPDATE SET facebook_token = $2`,
+            ['admin', accessToken]
         );
-        res.json({ status: 'success', message: 'Facebook linked and saved to DB' });
-    } else {
-        res.status(400).json({ status: 'error' });
+
+        res.send('<h1>✅ Facebook Connected!</h1><p>Tokens saved to Supabase. You can close this.</p>');
+    } catch (e) {
+        res.status(500).send('Error: ' + (e.response?.data?.error?.message || e.message));
     }
 });
 

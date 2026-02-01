@@ -304,24 +304,7 @@
             if (platform === 'YouTube') {
                 window.location.href = `${BACKEND_URL}/auth/youtube`;
             } else if (platform === 'Facebook') {
-                const token = prompt('Enter your Facebook Page Access Token:');
-                if (token) {
-                    try {
-                        const res = await fetch(`${BACKEND_URL}/api/connect/facebook`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token })
-                        });
-                        const data = await res.json();
-                        if (data.status === 'success') {
-                            alert('✅ Facebook linked successfully!');
-                            document.getElementById('btn-fb').classList.add('connected');
-                            document.getElementById('btn-fb').innerHTML = 'Facebook Connected ✅';
-                        }
-                    } catch (e) {
-                        alert('❌ Error connecting to backend');
-                    }
-                }
+                window.location.href = `${BACKEND_URL}/auth/facebook`;
             } else {
                 alert(`🔗 Connection for ${platform} coming soon!`);
             }
