@@ -45,10 +45,16 @@ async function runDailyAutomation() {
         // 4. Upload to YouTube (Example)
         if (fs.existsSync(TOKEN_PATH)) {
             console.log("📤 Attempting to upload to YouTube...");
-            // Logic for YouTube upload using tokens.json
-            // (Assumes you've implemented the OAuth2 loading in src/socials/youtube.js)
+            // YouTube logic
+        }
+
+        // 5. Upload to Facebook (Using your new Token)
+        if (process.env.FACEBOOK_PAGE_ACCESS_TOKEN) {
+            console.log("📤 Attempting to upload to Facebook...");
+            const { uploadToFacebook } = await import("./src/socials/facebook.js");
+            await uploadToFacebook(videoPath, `${content.title}\n\n${content.script}\n#AI #Automation #HamzaAmirni`);
         } else {
-            console.log("⚠️ YouTube tokens not found. Skipping upload. Video saved at:", videoPath);
+            console.log("⚠️ Facebook token not found in .env. Skipping Facebook upload.");
         }
 
         console.log("✨ Daily Task Completed Successfully!");
