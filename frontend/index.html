@@ -298,17 +298,52 @@
     </footer>
 
     <script>
-        function connectSocial(platform) {
-            alert(`🔗 جاري تحويلك لصفحة تسجيل الدخول بـ ${platform}...`);
-            const btnId = 'btn-' + (platform === 'YouTube' ? 'yt' : platform === 'Facebook' ? 'fb' : platform === 'TikTok' ? 'tt' : 'ig');
-            document.getElementById(btnId).classList.add('connected');
-            document.getElementById(btnId).innerHTML = platform + ' Connected ✅';
+        const BACKEND_URL = ''; // Leave empty if frontend and backend are on same domain, or put your Koyeb/HF URL here
+
+        async function connectSocial(platform) {
+            if (platform === 'YouTube') {
+                window.location.href = `${BACKEND_URL}/auth/youtube`;
+            } else if (platform === 'Facebook') {
+                const token = prompt('Enter your Facebook Page Access Token:');
+                if (token) {
+                    try {
+                        const res = await fetch(`${BACKEND_URL}/api/connect/facebook`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            alert('✅ Facebook linked successfully!');
+                            document.getElementById('btn-fb').classList.add('connected');
+                            document.getElementById('btn-fb').innerHTML = 'Facebook Connected ✅';
+                        }
+                    } catch (e) {
+                        alert('❌ Error connecting to backend');
+                    }
+                }
+            } else {
+                alert(`🔗 Connection for ${platform} coming soon!`);
+            }
         }
 
-        function startGeneration() {
+        async function startGeneration() {
             const topic = document.getElementById('topic').value;
             if (!topic) return alert('يرجى إدخال موضوع أولاً');
-            alert('🚀 جاري بدء العملية لـ: ' + topic + '. سيتم معالجة الفيديو في الخلفية.');
+
+            alert('🚀 جاري إرسال الطلب للمصنع...');
+
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/automate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic })
+                });
+                const data = await res.json();
+                alert('✨ بدأت العملية! يمكنك متابعة سير العمل في السجلات.');
+            } catch (e) {
+                alert('❌ فشل الاتصال بالخادم');
+            }
         }
     </script>
 </body>
