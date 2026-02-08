@@ -20,11 +20,23 @@ export async function getYouTubeAuth() {
         process.env.YOUTUBE_REDIRECT_URI || 'http://localhost:3000'
     );
 
+    // Try reading from process.env (for Vercel/Netlify)
+    if (process.env.YOUTUBE_TOKENS) {
+        try {
+            const tokens = JSON.parse(process.env.YOUTUBE_TOKENS);
+            oauth2Client.setCredentials(tokens);
+            return oauth2Client;
+        } catch (e) {
+            console.error("Error parsing YOUTUBE_TOKENS env var:", e.message);
+        }
+    }
+
+    // Fallback to local tokens.json
     if (fs.existsSync(TOKEN_PATH)) {
         const tokens = JSON.parse(fs.readFileSync(TOKEN_PATH));
         oauth2Client.setCredentials(tokens);
         return oauth2Client;
     }
 
-    throw new Error("YouTube token not found. Please run authentication first.");
+    throw new Error("YouTube token not found (no tokens.json and no YOUTUBE_TOKENS env var).");
 }
