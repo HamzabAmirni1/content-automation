@@ -59,3 +59,33 @@ export async function uploadToFacebook(videoPath, description) {
         throw error;
     }
 }
+
+/**
+ * Uploads a photo to a Facebook Page.
+ * @param {string} imagePath 
+ * @param {string} caption 
+ */
+export async function uploadPhotoToFacebook(imagePath, caption) {
+    const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    if (!token) {
+        console.error("❌ Facebook Token missing in .env");
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('source', fs.createReadStream(imagePath));
+        formData.append('message', caption);
+        formData.append('access_token', token);
+
+        const response = await axios.post(`https://graph.facebook.com/v19.0/me/photos`, formData, {
+            headers: formData.getHeaders()
+        });
+
+        console.log("✨ Photo Published on Facebook Successfully!", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("❌ Facebook Photo Upload Error:", error.response?.data || error.message);
+        throw error;
+    }
+}
