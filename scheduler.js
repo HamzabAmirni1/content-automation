@@ -28,13 +28,38 @@ async function runDailyAutomation() {
 
         // 3. Upload to Facebook as a Photo Post
         if (process.env.FACEBOOK_PAGE_ACCESS_TOKEN) {
-            console.log("📤 Posting Photo to Facebook...");
-            const { uploadPhotoToFacebook } = await import("./src/socials/facebook.js");
-            const caption = `${content.title}\n\n${content.script}\n\n#AI #Automation #DailyPost #HamzaAmirni`;
-            await uploadPhotoToFacebook(imagePath, caption);
-            console.log("✅ Posted successfully to Facebook!");
-        } else {
-            console.log("⚠️ Facebook token missing in .env.");
+            try {
+                console.log("📤 Posting Photo to Facebook...");
+                const { uploadPhotoToFacebook } = await import("./src/socials/facebook.js");
+                const caption = `${content.title}\n\n${content.script}\n\n#AI #Automation #DailyPost #HamzaAmirni`;
+                await uploadPhotoToFacebook(imagePath, caption);
+                console.log("✅ Posted successfully to Facebook!");
+            } catch (fbError) {
+                console.error("❌ Facebook Upload Error:", fbError.message);
+            }
+        }
+
+        // 4. Upload to YouTube as a Video
+        if (process.env.YOUTUBE_CLIENT_ID) {
+            try {
+                console.log("🎬 Creating Video for YouTube...");
+                const { createVideoFromImage } = await import("./src/video.js");
+                const videoPath = await createVideoFromImage(imagePath, `daily_video_${Date.now()}.mp4`);
+
+                console.log("📤 Uploading to YouTube...");
+                const { getYouTubeAuth } = await import("./src/socials/youtubeAuth.js");
+                const { uploadToYouTube } = await import("./src/socials/youtube.js");
+
+                const auth = await getYouTubeAuth();
+                await uploadToYouTube(videoPath, {
+                    title: content.title,
+                    description: content.script + "\n\n#AI #Automation #Shorts"
+                }, auth);
+
+                console.log("✅ Posted successfully to YouTube!");
+            } catch (ytError) {
+                console.error("❌ YouTube Upload Error:", ytError.message);
+            }
         }
 
         console.log("✨ Automation Task Finished!");

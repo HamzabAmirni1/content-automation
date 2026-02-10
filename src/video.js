@@ -12,7 +12,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * @param {string} outputName 
  */
 export async function createVideoFromImage(imagePath, outputName, duration = 10) {
-    const outputPath = path.join(__dirname, "../output", outputName);
+    const outputDir = path.join(__dirname, "../output");
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+    const outputPath = path.join(outputDir, outputName);
 
     return new Promise((resolve, reject) => {
         ffmpeg(imagePath)
@@ -24,7 +28,7 @@ export async function createVideoFromImage(imagePath, outputName, duration = 10)
                 console.log('Spawned Ffmpeg with command: ' + commandLine);
             })
             .on('error', (err) => {
-                console.error('An error occurred: ' + err.message);
+                console.error('An error occurred during video creation: ' + err.message);
                 reject(err);
             })
             .on('end', () => {
